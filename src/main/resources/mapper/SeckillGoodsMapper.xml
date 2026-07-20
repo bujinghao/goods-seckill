@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.seckill.mapper.SeckillGoodsMapper">
+
+    <resultMap id="BaseResultMap" type="com.seckill.entity.SeckillGoods">
+        <id column="id" property="id"/>
+        <result column="goods_name" property="goodsName"/>
+        <result column="goods_title" property="goodsTitle"/>
+        <result column="goods_img" property="goodsImg"/>
+        <result column="goods_price" property="goodsPrice"/>
+        <result column="seckill_price" property="seckillPrice"/>
+        <result column="stock_count" property="stockCount"/>
+        <result column="stock_count_per_user" property="stockCountPerUser"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="goods_desc" property="goodsDesc"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, goods_name, goods_title, goods_img, goods_price, seckill_price, 
+        stock_count, stock_count_per_user, start_time, end_time, status, 
+        goods_desc, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM seckill_goods
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM seckill_goods
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectActiveGoods" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM seckill_goods
+        WHERE status = 1 
+          AND start_time &lt;= NOW() 
+          AND end_time &gt;= NOW()
+          AND stock_count &gt; 0
+        ORDER BY start_time DESC
+    </select>
+
+    <!-- 扣减库存：使用 stock_count > 0 条件防止超卖 ；使用锁类型是行锁 ，乐观锁 -->
+    <update id="decreaseStock">
+        UPDATE seckill_goods
+        SET stock_count = stock_count - 1
+        WHERE id = #{goodsId}
+          AND stock_count &gt; 0
+    </update>
+
+    <update id="updateById">
+        UPDATE seckill_goods
+        <set>
+            <if test="goodsName != null">goods_name = #{goodsName},</if>
+            <if test="goodsTitle != null">goods_title = #{goodsTitle},</if>
+            <if test="goodsImg != null">goods_img = #{goodsImg},</if>
+            <if test="goodsPrice != null">goods_price = #{goodsPrice},</if>
+            <if test="seckillPrice != null">seckill_price = #{seckillPrice},</if>
+            <if test="stockCount != null">stock_count = #{stockCount},</if>
+            <if test="stockCountPerUser != null">stock_count_per_user = #{stockCountPerUser},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="goodsDesc != null">goods_desc = #{goodsDesc},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

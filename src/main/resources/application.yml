@@ -1,0 +1,59 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: goods-seckill
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      # password: # 如果有密码，取消注释并填写
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
+
+  # 数据源配置（HikariCP）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/seckill?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: my-secret-pw
+    # HikariCP 连接池配置
+    hikari:
+      minimum-idle: 10 # 最小空闲连接数
+      maximum-pool-size: 50 # 最大连接数
+      idle-timeout: 300000 # 空闲连接超时时间
+      max-lifetime: 1800000 # 连接最大生命周期
+      connection-timeout: 30000 # 连接超时时间
+      pool-name: SeckillHikariCP # 连接池名称
+      connection-test-query: SELECT 1 # 连接测试查询
+
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.seckill.entity
+  configuration:
+    # 下划线映射为驼峰命名法
+    map-underscore-to-camel-case: true
+    # # 日志配置, 打印 SQL 语句
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 日志配置
+logging:
+  level:
+    # 映射器日志级别为 debug
+    com.seckill.mapper: debug # 打印 Mapper 接口的 SQL 日志
+    org.springframework.jdbc: debug # 打印 Spring JDBC 的详细日志
