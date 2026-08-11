@@ -25,14 +25,15 @@ import org.springframework.stereotype.Component;
 public class SeckillMessageProducer implements RabbitTemplate.ConfirmCallback, RabbitTemplate.ReturnsCallback {
 
     private static final Logger log = LoggerFactory.getLogger(SeckillMessageProducer.class);
-
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
+    // @Autowired
+    // private RabbitTemplate rabbitTemplate;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * 构造函数：注册回调监听器
      */
-    public SeckillMessageProducer(@Autowired RabbitTemplate rabbitTemplate) {
+    // public SeckillMessageProducer(@Autowired RabbitTemplate rabbitTemplate) { 同时有 字段注入 和 构造函数注入 RabbitTemplate ，这会导致 Spring 注入混乱。
+    public SeckillMessageProducer(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
         // 注册确认回调（消息是否成功到达交换机）
         rabbitTemplate.setConfirmCallback(this);

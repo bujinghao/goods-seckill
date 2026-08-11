@@ -28,7 +28,7 @@ public class SeckillOrderServiceImpl implements SeckillOrderService {
     public SeckillOrder getOrderDetail(String orderNo, Long goodsId) {
         SeckillOrder order = null;
         // 根据订单号和商品ID查询秒杀订单详情
-        if (orderNo == null || goodsId == null) {
+        if (orderNo == null && goodsId == null) {
             return null;
         }else if (orderNo != null && !orderNo.isEmpty()) {
             order = orderMapper.selectByOrderNo(orderNo);

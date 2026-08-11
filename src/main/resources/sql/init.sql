@@ -90,6 +90,6 @@ INSERT INTO `seckill_user` (`username`, `password`, `phone`, `email`) VALUES
 
 -- 测试商品
 INSERT INTO `seckill_goods` (`goods_name`, `goods_title`, `goods_img`, `goods_price`, `seckill_price`, `stock_count`, `stock_count_per_user`, `start_time`, `end_time`, `goods_desc`) VALUES
-('iPhone 15 Pro', '苹果iPhone 15 Pro 256GB', 'https://example.com/iphone15.jpg', 8999.00, 6999.00, 100, 1, '2024-01-01 10:00:00', '2024-12-31 23:59:59', '苹果最新旗舰手机'),
-('小米14', '小米14 12GB+256GB', 'https://example.com/mi14.jpg', 4999.00, 3999.00, 200, 2, '2024-01-01 10:00:00', '2024-12-31 23:59:59', '小米旗舰手机'),
-('华为Mate60', '华为Mate60 Pro 512GB', 'https://example.com/mate60.jpg', 7999.00, 5999.00, 50, 1, '2024-01-01 10:00:00', '2024-12-31 23:59:59', '华为最新旗舰手机');
+('iPhone 15 Pro', '苹果iPhone 15 Pro 256GB', 'https://example.com/iphone15.jpg', 8999.00, 6999.00, 100, 1, '2026-01-01 10:00:00', '2026-12-31 23:59:59', '苹果最新旗舰手机'),
+('小米14', '小米14 12GB+256GB', 'https://example.com/mi14.jpg', 4999.00, 3999.00, 200, 2, '2026-01-01 10:00:00', '2026-12-31 23:59:59', '小米旗舰手机'),
+('华为Mate60', '华为Mate60 Pro 512GB', 'https://example.com/mate60.jpg', 7999.00, 5999.00, 50, 1, '2026-01-01 10:00:00', '2026-12-31 23:59:59', '华为最新旗舰手机');

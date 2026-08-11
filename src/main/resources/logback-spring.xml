@@ -37,7 +37,7 @@
             <!-- 最大保留7天的日志文件 -->
             <maxHistory>7</maxHistory>
             <!-- 总日志文件大小限制（可选） -->
-            <totalSizeCap>1GB</totalSizeCap>
+            <totalSizeCap>500MB</totalSizeCap>
         </rollingPolicy>
     </appender>
 
@@ -53,4 +53,7 @@
 
     <!-- 应用日志级别 -->
     <logger name="com.seckill" level="DEBUG"/>
+
+    <!-- 错误日志级别 -->
+    <logger name="com.seckill.error" level="ERROR"/>
 </configuration>

@@ -51,9 +51,27 @@ public class JwtInterceptor implements HandlerInterceptor {
         // 记录恶意行为次数
         // ipBlacklistService.recordMaliciousAction(ip, "access");
 
-        // 2. 获取token
-        String authHeader = request.getHeader(jwtConfig.getHeader());
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(jwtConfig.getPrefix())) {
+        // 2. 获取token（优先从Header读取，其次从Cookie读取）
+        String token = null;
+        String authHeader = request.getHeader(jwtConfig.getHeader()); // Header是 Authorization
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith(jwtConfig.getPrefix())) {
+            // 从Header中获取token（AJAX请求）
+            token = authHeader.substring(jwtConfig.getPrefix().length());
+        } else if (request.getCookies() != null) {
+            // 从Cookie中获取token（浏览器页面导航）
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if (jwtConfig.getHeader().equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                    // Cookie值经过encodeURIComponent编码，需要解码
+                    String cookieValue = java.net.URLDecoder.decode(cookie.getValue(), "UTF-8");
+                    if (cookieValue.startsWith(jwtConfig.getPrefix())) {
+                        token = cookieValue.substring(jwtConfig.getPrefix().length());
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!StringUtils.hasText(token)) {
             log.warn("请求未携带有效的JWT token, URI: {}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json;charset=UTF-8");
@@ -62,7 +80,6 @@ public class JwtInterceptor implements HandlerInterceptor {
         }
 
         // 3. 解析token
-        String token = authHeader.substring(jwtConfig.getPrefix().length());
         if (!jwtUtil.validateToken(token)) {
             log.warn("JWT token无效或已过期, URI: {}", request.getRequestURI());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

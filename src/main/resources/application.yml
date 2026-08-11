@@ -130,9 +130,16 @@ spring:
       cache:
         cachecontrol:
           max-age: 604800  # 静态资源缓存有效期（秒）：7天
-          no-cache: false  # 允许缓存
+          no-cache: true  # 允许缓存
           no-store: false  # 允许存储
       static-locations: classpath:/static/  # 静态资源存放路径
+
+      # Spring Boot 默认的静态资源位置已经是：
+      #   classpath:/META-INF/resources/
+      #   classpath:/resources/
+      #   classpath:/static/        ← 你只配了这个
+      #   classpath:/public/
+      # 显式配置 static-locations: classpath:/static/ 时， 会覆盖默认值 ，导致其他三个目录不再被扫描。
 
 # MyBatis 配置
 mybatis:

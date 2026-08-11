@@ -3,6 +3,7 @@ package com.seckill.service.impl;
 import com.seckill.config.JwtConfig;
 import com.seckill.dto.LoginRequest;
 import com.seckill.dto.LoginResponse;
+import com.seckill.dto.RegisterRequest;
 import com.seckill.entity.SeckillUser;
 import com.seckill.exception.SecurityException;
 import com.seckill.mapper.SeckillUserMapper;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,6 +42,53 @@ public class UserServiceImpl implements UserService {
     private static final int MAX_LOGIN_FAILURES = 5;
     // 账户锁定时间（毫秒）：15分钟
     private static final long LOCK_TIME = 15 * 60 * 1000L;
+
+    @Override
+    public void register(RegisterRequest request) {
+        String username = request.getUsername();
+        String password = request.getPassword();
+        String confirmPassword = request.getConfirmPassword();
+
+        // 1. 参数校验
+        if (!StringUtils.hasText(username)) {
+            throw new SecurityException("用户名不能为空");
+        }
+        if (!StringUtils.hasText(password)) {
+            throw new SecurityException("密码不能为空");
+        }
+        if (username.length() < 3 || username.length() > 20) {
+            throw new SecurityException("用户名长度为3-20个字符");
+        }
+        if (password.length() < 6 || password.length() > 20) {
+            throw new SecurityException("密码长度为6-20个字符");
+        }
+        if (!password.equals(confirmPassword)) {
+            throw new SecurityException("两次输入的密码不一致");
+        }
+
+        // 2. 检查用户名是否已存在
+        SeckillUser existUser = userMapper.selectByUsername(username);
+        if (existUser != null) {
+            throw new SecurityException("用户名已被注册");
+        }
+
+        // 3. 创建用户
+        SeckillUser user = new SeckillUser();
+        user.setUsername(username);
+        user.setPassword(DigestUtils.md5DigestAsHex(password.getBytes()));
+        user.setPhone(request.getPhone());
+        user.setEmail(request.getEmail());
+        user.setStatus(1); // 启用状态
+        user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
+
+        int rows = userMapper.insert(user);
+        if (rows <= 0) {
+            throw new SecurityException("注册失败，请稍后重试");
+        }
+
+        log.info("用户注册成功: username={}, userId={}", username, user.getId());
+    }
 
     @Override
     public LoginResponse login(LoginRequest request, String ip) {

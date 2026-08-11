@@ -6,6 +6,7 @@ import com.seckill.dto.Result;
 import com.seckill.entity.SeckillGoods;
 import com.seckill.entity.SeckillOrder;
 import com.seckill.service.CaptchaService;
+import com.seckill.service.SeckillOrderService;
 import com.seckill.service.SeckillPathService;
 import com.seckill.service.SeckillService;
 import com.seckill.util.SignatureUtil;
@@ -39,6 +40,9 @@ public class SeckillController {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private SeckillOrderService seckillOrderService;
 
     /**
      * 查询所有秒杀商品
@@ -153,7 +157,7 @@ public class SeckillController {
     @GetMapping("/order/check")
     public Result<SeckillOrder> checkOrder(@RequestParam Long userId, @RequestParam Long goodsId) {
         try {
-            SeckillOrder order = seckillService.getOrderByUserAndGoods(userId, goodsId);
+            SeckillOrder order = seckillOrderService.getOrderDetail(null, goodsId);
             if (order != null) {
                 return Result.success(order);
             }

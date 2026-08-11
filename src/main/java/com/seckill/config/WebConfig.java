@@ -20,17 +20,18 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/**")  // 拦截所有路径
-                .excludePathPatterns(  // 白名单：不需要认证的路径
+                .excludePathPatterns(  // 白名单：不需要认证的路径，包括静态资源，不需要认证就可以访问
                         "/user/login",          // 登录接口
                         "/user/register",       // 注册接口
-                        "/user/captcha",        // 验证码接口
-                        "/seckill/path",        // 动态URL获取接口
-                        // "/goods/list",          // 商品列表页
-                        "/goods/*",             // 商品详情页
-                        "/order/result",        // 秒杀结果页
+                        // "/user/captcha",        // 验证码接口
+                        // "/seckill/path",        // 动态URL获取接口
+                        "/goods/list",          // 商品列表页
+                        // "/order/result",        // 秒杀结果页
                         "/",                    // 首页
-                        "/static/**",           // 静态资源
-                        "/public/**",           // 公共资源
+                        "/css/**",              // CSS静态资源
+                        "/js/**",               // JS静态资源
+                        // "/static/**",           // 静态资源
+                        // "/public/**",           // 公共资源
                         "/actuator/**",         // 健康检查
                         "/error"                // 错误页面
                 );

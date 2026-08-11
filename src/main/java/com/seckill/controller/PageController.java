@@ -4,7 +4,6 @@ import com.seckill.entity.SeckillGoods;
 import com.seckill.entity.SeckillOrder;
 import com.seckill.service.SeckillOrderService;
 import com.seckill.service.SeckillService;
-import com.seckill.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -33,7 +32,6 @@ public class PageController {
     public String goodsList(Model model) {
         List<SeckillGoods> goodsList = seckillService.listGoods();
         model.addAttribute("goodsList", goodsList);
-        model.addAttribute("currentUserId", UserContext.getCurrentUserId());
         return "goods-list";
     }
 
@@ -47,7 +45,6 @@ public class PageController {
             return "error/404";
         }
         model.addAttribute("goods", goods);
-        model.addAttribute("currentUserId", UserContext.getCurrentUserId());
         return "seckill-detail";
     }
 
@@ -59,15 +56,14 @@ public class PageController {
     public String seckillResult(@RequestParam(required = false) String orderNo,
                                 @RequestParam(required = false) Long goodsId,
                                 Model model) {
-        // Long userId = UserContext.getCurrentUserId();
-        // model.addAttribute("orderNo", orderNo);
-        // model.addAttribute("userId", userId);
-        // model.addAttribute("goodsId", goodsId);
+        // 传递参数到模板
+        model.addAttribute("orderNo", orderNo);
+        model.addAttribute("goodsId", goodsId);
+        
+        // 查询订单
         SeckillOrder order = seckillOrderService.getOrderDetail(orderNo, goodsId);
         model.addAttribute("order", order);
-        if (order == null) {
-            return "error/404";
-        }
+        
         return "seckill-result";
     }
 }

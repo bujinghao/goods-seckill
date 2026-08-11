@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="current-user-id" th:content="${currentUserId}">
     <title th:text="'秒杀 - ' + ${goods.goodsName}">秒杀商品详情</title>
     <meta name="description" th:content="'限时秒杀：' + ${goods.goodsName} + '，秒杀价仅¥' + ${#numbers.formatDecimal(goods.seckillPrice, 1, 2)}">
     <link rel="stylesheet" href="/css/seckill.css" th:href="@{/css/seckill.css}">
@@ -14,14 +13,7 @@
 </head>
 <body>
     <!-- 头部导航 -->
-    <header class="header">
-        <div class="container">
-            <h1><a href="/">⚡ 秒杀商城</a></h1>
-            <div class="user-info">
-                <a href="/" class="logout-btn">← 返回列表</a>
-            </div>
-        </div>
-    </header>
+    <header class="header" th:replace="~{fragments/header :: header}"></header>
 
     <!-- 商品详情 -->
     <main class="detail-page container">
@@ -58,7 +50,7 @@
 
                     <!-- 库存信息 -->
                     <div class="detail-stock">
-                        已售 <span class="stock-num" th:text="${goods.stockCount}">0</span> 件
+                        剩余 <span class="stock-num" th:text="${goods.stockCount}">0</span> 件
                         <span th:if="${goods.stockCountPerUser > 0}">
                             ｜每人限购 <span class="stock-num" th:text="${goods.stockCountPerUser}">1</span> 件
                         </span>
@@ -76,7 +68,7 @@
                             th:data-goods-id="${goods.id}"
                             th:disabled="${goods.status == 2}"
                             th:classappend="${goods.status == 0 ? 'not-started' : (goods.status == 2 ? 'ended' : '')}"
-                            th:onclick="'SeckillDebounce.execute(' + ${goods.id} + ')'">
+                            onclick="startSeckillFlow(parseInt(this.dataset.goodsId))">
                         <span th:text="${goods.status == 0 ? '即将开始' : (goods.status == 2 ? '已结束' : '立即秒杀')}">立即秒杀</span>
                     </button>
 
@@ -107,19 +99,121 @@
         </div>
     </div>
 
+    <!-- 登录弹窗 -->
+    <div class="login-modal" id="loginModal">
+        <div class="login-modal-content">
+            <div class="login-modal-header">
+                <h3>用户登录</h3>
+                <span class="login-close" onclick="SeckillLogin.hide()">&times;</span>
+            </div>
+            <div class="login-modal-body">
+                <div class="login-form-group">
+                    <label for="loginUsername">账号</label>
+                    <input type="text" id="loginUsername" class="login-input" placeholder="请输入用户名" autocomplete="username" />
+                </div>
+                <div class="login-form-group">
+                    <label for="loginPassword">密码</label>
+                    <input type="password" id="loginPassword" class="login-input" placeholder="请输入密码" autocomplete="current-password" />
+                </div>
+                <div class="login-error" id="loginError"></div>
+            </div>
+            <div class="login-modal-footer">
+                <button class="login-btn-cancel" onclick="SeckillLogin.hide()">取消</button>
+                <button class="login-btn-submit" id="loginSubmitBtn" onclick="SeckillLogin.submit()">登录</button>
+            </div>
+            <div class="login-modal-switch">
+                <span>还没有账号？</span>
+                <a href="javascript:void(0)" onclick="SeckillLogin.showRegister()">立即注册</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册弹窗 -->
+    <div class="login-modal" id="registerModal">
+        <div class="login-modal-content">
+            <div class="login-modal-header">
+                <h3>用户注册</h3>
+                <span class="login-close" onclick="SeckillRegister.hide()">&times;</span>
+            </div>
+            <div class="login-modal-body">
+                <div class="login-form-group">
+                    <label for="regUsername">账号</label>
+                    <input type="text" id="regUsername" class="login-input" placeholder="请输入用户名（3-20个字符）" autocomplete="username" />
+                </div>
+                <div class="login-form-group">
+                    <label for="regPassword">密码</label>
+                    <input type="password" id="regPassword" class="login-input" placeholder="请输入密码（6-20个字符）" autocomplete="new-password" />
+                </div>
+                <div class="login-form-group">
+                    <label for="regConfirmPassword">确认密码</label>
+                    <input type="password" id="regConfirmPassword" class="login-input" placeholder="请再次输入密码" autocomplete="new-password" />
+                </div>
+                <div class="login-form-group">
+                    <label for="regPhone">手机号 <span style="color:#999;font-weight:normal;">（选填）</span></label>
+                    <input type="tel" id="regPhone" class="login-input" placeholder="请输入手机号" autocomplete="tel" />
+                </div>
+                <div class="login-form-group">
+                    <label for="regEmail">邮箱 <span style="color:#999;font-weight:normal;">（选填）</span></label>
+                    <input type="email" id="regEmail" class="login-input" placeholder="请输入邮箱" autocomplete="email" />
+                </div>
+                <div class="login-error" id="registerError"></div>
+            </div>
+            <div class="login-modal-footer">
+                <button class="login-btn-cancel" onclick="SeckillRegister.hide()">取消</button>
+                <button class="login-btn-submit" id="registerSubmitBtn" onclick="SeckillRegister.submit()">注册</button>
+            </div>
+            <div class="login-modal-switch">
+                <span>已有账号？</span>
+                <a href="javascript:void(0)" onclick="SeckillRegister.showLogin()">去登录</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 验证码弹窗 -->
+    <div class="captcha-modal" id="captchaModal">
+        <div class="captcha-modal-content">
+            <div class="captcha-modal-header">
+                <h3>安全验证</h3>
+                <span class="captcha-close" onclick="SeckillCaptcha.hide()">&times;</span>
+            </div>
+            <div class="captcha-modal-body">
+                <p class="captcha-tip">请输入验证码以继续秒杀</p>
+                <div class="captcha-image-wrapper">
+                    <img id="captchaImage" class="captcha-image" src="" alt="验证码" />
+                    <span class="captcha-refresh" onclick="SeckillCaptcha.refresh()">换一张</span>
+                </div>
+                <div class="captcha-form-group">
+                    <input type="text" id="captchaInput" class="captcha-input" placeholder="请输入验证码" maxlength="4" autocomplete="off" />
+                </div>
+                <div class="captcha-error" id="captchaError"></div>
+            </div>
+            <div class="captcha-modal-footer">
+                <button class="captcha-btn-cancel" onclick="SeckillCaptcha.hide()">取消</button>
+                <button class="captcha-btn-submit" id="captchaSubmitBtn" onclick="SeckillCaptcha.submit()">确认</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/seckill.js" th:src="@{/js/seckill.js}"></script>
     <script>
+        /**
+         * 秒杀流程入口：登录检查 → 验证码 → 动态URL → 执行秒杀
+         */
+        function startSeckillFlow(goodsId) {
+            SeckillCaptcha.startFlow(goodsId);
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             // 启动倒计时
             SeckillCountdown.start(
                 'countdown',
-                '[[${#temporals.format(goods.startTime, 'yyyy-MM-dd\'T\'HH:mm:ss')}]]',
-                '[[${#temporals.format(goods.endTime, 'yyyy-MM-dd\'T\'HH:mm:ss')}]]'
+                '[[${#temporals.format(goods.startTime, "yyyy-MM-dd HH:mm:ss")}]]',
+                '[[${#temporals.format(goods.endTime, "yyyy-MM-dd HH:mm:ss")}]]'
             );
 
             // 格式化详情页时间显示
-            var startStr = '[[${#temporals.format(goods.startTime, 'yyyy-MM-dd HH:mm:ss')}]]';
-            var endStr = '[[${#temporals.format(goods.endTime, 'yyyy-MM-dd HH:mm:ss')}]]';
+            var startStr = '[[${#temporals.format(goods.startTime, "yyyy-MM-dd HH:mm:ss")}]]';
+            var endStr = '[[${#temporals.format(goods.endTime, "yyyy-MM-dd HH:mm:ss")}]]';
             if (startStr && endStr) {
                 var timeInfo = document.querySelector('.detail-time');
                 if (timeInfo) {

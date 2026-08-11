@@ -271,6 +271,11 @@ public class SeckillServiceImpl implements SeckillService {
 
     /**
      * 检验并创建订单
+     * @param userId 用户ID
+     * @param goodsId 商品ID
+     * @return 订单对象
+     * 
+     * 后续优化，批量处理订单创建，避免数据库压力；一些校验以及缓存处理放到秒杀接口中
      */
     @Override
     public SeckillOrder validateAndCreateOrder(Long userId, Long goodsId) {

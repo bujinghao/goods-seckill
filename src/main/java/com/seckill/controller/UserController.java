@@ -3,6 +3,7 @@ package com.seckill.controller;
 import com.seckill.annotation.OperationLog;
 import com.seckill.dto.LoginRequest;
 import com.seckill.dto.LoginResponse;
+import com.seckill.dto.RegisterRequest;
 import com.seckill.dto.Result;
 import com.seckill.exception.SecurityException;
 import com.seckill.service.UserService;
@@ -26,6 +27,23 @@ public class UserController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    /**
+     * 用户注册
+     */
+    @OperationLog(operation = "REGISTER", description = "用户注册")
+    @PostMapping("/register")
+    public Result<Void> register(@RequestBody RegisterRequest request) {
+        try {
+            userService.register(request);
+            return Result.success();
+        } catch (SecurityException e) {
+            return Result.error(e.getMessage());
+        } catch (Exception e) {
+            log.error("注册异常", e);
+            return Result.error("注册失败，请稍后重试");
+        }
+    }
 
     /**
      * 用户登录

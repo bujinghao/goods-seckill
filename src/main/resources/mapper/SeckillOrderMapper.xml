@@ -65,6 +65,8 @@
         WHERE user_id = #{userId}
           AND goods_id = #{goodsId}
           AND status IN (0, 1)
+          ORDER BY create_time DESC
+          LIMIT 1
     </select>
 
     <update id="updateStatus">

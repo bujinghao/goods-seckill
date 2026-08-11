@@ -2,11 +2,19 @@ package com.seckill.service;
 
 import com.seckill.dto.LoginRequest;
 import com.seckill.dto.LoginResponse;
+import com.seckill.dto.RegisterRequest;
 
 /**
  * 用户服务接口
  */
 public interface UserService {
+
+    /**
+     * 用户注册
+     *
+     * @param request 注册请求
+     */
+    void register(RegisterRequest request);
 
     /**
      * 用户登录

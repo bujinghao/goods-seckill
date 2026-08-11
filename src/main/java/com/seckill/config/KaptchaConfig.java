@@ -37,9 +37,11 @@ public class KaptchaConfig {
         // 字体
         properties.setProperty("kaptcha.textproducer.font.names", "Arial,Courier");
         // 背景颜色渐变，开始颜色
-        properties.setProperty("kaptcha.background.clear.from", "lightgray");
+        //   properties.setProperty("kaptcha.background.clear.from", "lightgray");
+        // Kaptcha 不支持 'lightgray' 这种命名颜色，需要使用十六进制格式。
+        properties.setProperty("kaptcha.background.clear.from", "211,211,211");
         // 背景颜色渐变，结束颜色
-        properties.setProperty("kaptcha.background.clear.to", "white");
+        properties.setProperty("kaptcha.background.clear.to", "255,255,255");
         // 干扰线颜色
         properties.setProperty("kaptcha.noise.color", "black");
         // 干扰实现类

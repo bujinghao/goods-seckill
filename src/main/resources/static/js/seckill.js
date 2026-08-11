@@ -34,9 +34,8 @@ const SeckillDebounce = {
 
         try {
             const url = path
-                ? `/seckill/${path}/${goodsId}/execute`
+                ? `/seckill/${path}/execute`
                 : `/seckill/${goodsId}/do/async?userId=${SeckillUtils.getCurrentUserId()}`;
-
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -391,11 +390,10 @@ const SeckillLazyLoad = {
 // ========================================
 const SeckillUtils = {
     /**
-     * 获取当前用户ID（从页面meta标签或data属性获取）
+     * 获取当前用户ID（从localStorage获取）
      */
     getCurrentUserId() {
-        const meta = document.querySelector('meta[name="current-user-id"]');
-        return meta ? meta.getAttribute('content') : null;
+        return localStorage.getItem('seckill_userId');
     },
 
     /**
@@ -432,15 +430,518 @@ const SeckillUtils = {
 };
 
 // ========================================
-// 9. 页面初始化
+// 9. 登录弹窗
 // ========================================
-document.addEventListener('DOMContentLoaded', function() {
+const SeckillLogin = {
+    show() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+            modal.classList.add('show');
+            document.getElementById('loginError').classList.remove('show');
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginUsername').focus();
+        }
+    },
+
+    hide() {
+        const modal = document.getElementById('loginModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    /**
+     * 提交登录
+     */
+    async submit() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+        const btn = document.getElementById('loginSubmitBtn');
+
+        // 表单校验
+        if (!username) {
+            errorEl.textContent = '请输入用户名';
+            errorEl.classList.add('show');
+            return;
+        }
+        if (!password) {
+            errorEl.textContent = '请输入密码';
+            errorEl.classList.add('show');
+            return;
+        }
+
+        // 禁用按钮，防止重复提交
+        btn.disabled = true;
+        btn.textContent = '登录中...';
+        errorEl.classList.remove('show');
+
+        try {
+            const response = await fetch('/user/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            });
+            const data = await response.json();
+
+            if (data.code === 200 && data.data && data.data.token) {
+                // 登录成功，存储 token 和用户信息
+                const token = data.data.token;
+                localStorage.setItem('seckill_token', token);
+                localStorage.setItem('seckill_userId', data.data.userId);
+                localStorage.setItem('seckill_username', data.data.username);
+                // 设置 cookie，便于页面加载时识别
+                document.cookie = 'Authorization=' + encodeURIComponent('Bearer ' + token) + '; path=/; max-age=86400';
+
+                SeckillLogin.hide();
+                SeckillToast.success('登录成功');
+                // 刷新页面，显示登录状态
+                setTimeout(() => { location.reload(); }, 500);
+            } else {
+                errorEl.textContent = data.msg || '登录失败，请检查账号密码';
+                errorEl.classList.add('show');
+            }
+        } catch (error) {
+            errorEl.textContent = '网络异常，请稍后重试';
+            errorEl.classList.add('show');
+            console.error('登录请求异常:', error);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '登录';
+        }
+    },
+
+    /**
+     * 登出
+     */
+    async logout() {
+        try {
+            await fetch('/user/logout', { method: 'POST' });
+        } catch (e) {
+            // 忽略错误
+        }
+        localStorage.removeItem('seckill_token');
+        localStorage.removeItem('seckill_userId');
+        localStorage.removeItem('seckill_username');
+        localStorage.removeItem('seckill_role');
+        document.cookie = 'Authorization=; path=/; max-age=0';
+        location.reload();// 刷新页面，显示登录状态
+    },
+
+    /**
+     * 获取存储的 token
+     */
+    getToken() {
+        return localStorage.getItem('seckill_token');
+    },
+
+    /**
+     * 初始化：检查登录状态，设置请求拦截
+     */
+    init() {
+        // 确保 modal 元素存在
+        const modal = document.getElementById('loginModal');
+        if (!modal) return;
+
+        // 支持 Enter 键提交
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && modal.classList.contains('show')) {
+                SeckillLogin.submit();
+            }
+        });
+
+        // 点击弹窗外部关闭
+        modal.addEventListener('click', function (e) {
+            if (e.target === this) {
+                SeckillLogin.hide();
+            }
+        });
+    },
+
+    /**
+     * 切换到注册弹窗
+     */
+    showRegister() {
+        SeckillLogin.hide();
+        SeckillRegister.show();
+    }
+};
+
+// ========================================
+// 9-2. 注册弹窗
+// ========================================
+const SeckillRegister = {
+    show() {
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+            modal.classList.add('show');
+            document.getElementById('registerError').classList.remove('show');
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
+            document.getElementById('regPhone').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regUsername').focus();
+        }
+    },
+
+    hide() {
+        const modal = document.getElementById('registerModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    /**
+     * 切换到登录弹窗
+     */
+    showLogin() {
+        SeckillRegister.hide();
+        SeckillLogin.show();
+    },
+
+    /**
+     * 提交注册
+     */
+    async submit() {
+        const username = document.getElementById('regUsername').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const confirmPassword = document.getElementById('regConfirmPassword').value;
+        const phone = document.getElementById('regPhone').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const errorEl = document.getElementById('registerError');
+        const btn = document.getElementById('registerSubmitBtn');
+
+        // 表单校验
+        if (!username) {
+            errorEl.textContent = '请输入用户名';
+            errorEl.classList.add('show');
+            return;
+        }
+        if (username.length < 3 || username.length > 20) {
+            errorEl.textContent = '用户名长度为3-20个字符';
+            errorEl.classList.add('show');
+            return;
+        }
+        if (!password) {
+            errorEl.textContent = '请输入密码';
+            errorEl.classList.add('show');
+            return;
+        }
+        if (password.length < 6 || password.length > 20) {
+            errorEl.textContent = '密码长度为6-20个字符';
+            errorEl.classList.add('show');
+            return;
+        }
+        if (password !== confirmPassword) {
+            errorEl.textContent = '两次输入的密码不一致';
+            errorEl.classList.add('show');
+            return;
+        }
+
+        // 禁用按钮，防止重复提交
+        btn.disabled = true;
+        btn.textContent = '注册中...';
+        errorEl.classList.remove('show');
+
+        try {
+            const response = await fetch('/user/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    password: password,
+                    confirmPassword: confirmPassword,
+                    phone: phone || null,
+                    email: email || null
+                })
+            });
+            const data = await response.json();
+
+            if (data.code === 200) {
+                SeckillRegister.hide();
+                SeckillToast.success('注册成功，请登录');
+                // 自动切换到登录弹窗并填入用户名
+                setTimeout(() => {
+                    SeckillLogin.show();
+                    document.getElementById('loginUsername').value = username;
+                    document.getElementById('loginPassword').focus();
+                }, 500);
+            } else {
+                errorEl.textContent = data.msg || '注册失败，请稍后重试';
+                errorEl.classList.add('show');
+            }
+        } catch (error) {
+            errorEl.textContent = '网络异常，请稍后重试';
+            errorEl.classList.add('show');
+            console.error('注册请求异常:', error);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '注册';
+        }
+    },
+
+    /**
+     * 初始化
+     */
+    init() {
+        const modal = document.getElementById('registerModal');
+        if (!modal) return;
+
+        // 支持 Enter 键提交
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && modal.classList.contains('show')) {
+                SeckillRegister.submit();
+            }
+        });
+
+        // 点击弹窗外部关闭
+        modal.addEventListener('click', function (e) {
+            if (e.target === this) {
+                SeckillRegister.hide();
+            }
+        });
+    }
+};
+
+// ========================================
+// 10. 验证码弹窗 & 秒杀流程
+// ========================================
+const SeckillCaptcha = {
+    _goodsId: null,
+    _captchaKey: null,
+    _isFlowing: false,
+
+    /**
+     * 启动秒杀流程：登录检查 → 验证码 → 动态URL → 执行秒杀
+     */
+    startFlow(goodsId) {
+        if (this._isFlowing) return;
+        this._isFlowing = true;
+        this._goodsId = goodsId;
+
+        // 1. 检查登录状态
+        const token = SeckillLogin.getToken();
+        if (!token) {
+            SeckillLogin.show();
+            this._isFlowing = false;
+            return;
+        }
+
+        // 2. 显示验证码弹窗
+        this.show();
+        this._isFlowing = false;
+    },
+
+    /**
+     * 显示验证码弹窗，获取验证码图片
+     */
+    async show() {
+        const modal = document.getElementById('captchaModal');
+        if (!modal) return;
+
+        modal.classList.add('show');
+        document.getElementById('captchaError').classList.remove('show');
+        document.getElementById('captchaInput').value = '';
+        document.getElementById('captchaInput').focus();
+
+        await this.refresh();
+    },
+
+    hide() {
+        const modal = document.getElementById('captchaModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    },
+
+    /**
+     * 刷新验证码
+     */
+    async refresh() {
+        const imgEl = document.getElementById('captchaImage');
+        const errorEl = document.getElementById('captchaError');
+        errorEl.classList.remove('show');
+
+        try {
+            imgEl.src = ''; // 清空旧图片
+            const response = await fetch('/user/captcha');
+            const data = await response.json();
+
+            if (data.code === 200 && data.data) {
+                this._captchaKey = data.data.captchaKey;
+                imgEl.src = data.data.captchaImage;
+            } else {
+                errorEl.textContent = '获取验证码失败，请重试';
+                errorEl.classList.add('show');
+            }
+        } catch (e) {
+            errorEl.textContent = '网络异常，请稍后重试';
+            errorEl.classList.add('show');
+            console.error('获取验证码失败:', e);
+        }
+    },
+
+    /**
+     * 提交验证码 → 获取动态URL → 执行秒杀
+     */
+    async submit() {
+        const captchaText = document.getElementById('captchaInput').value.trim();
+        const errorEl = document.getElementById('captchaError');
+        const btn = document.getElementById('captchaSubmitBtn');
+
+        if (!captchaText) {
+            errorEl.textContent = '请输入验证码';
+            errorEl.classList.add('show');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '验证中...';
+        errorEl.classList.remove('show');
+
+        try {
+            // 1. 获取动态URL
+            const pathResp = await fetch('/seckill/path?goodsId=' + this._goodsId +
+                '&captchaKey=' + encodeURIComponent(this._captchaKey) +
+                '&captchaText=' + encodeURIComponent(captchaText));
+            const pathData = await pathResp.json();
+            console.log('动态URL :', pathData);
+            if (pathData.code !== 200) {
+                errorEl.textContent = pathData.msg || '验证失败，请重试';
+                errorEl.classList.add('show');
+                // 刷新验证码
+                await this.refresh();
+                btn.disabled = false;
+                btn.textContent = '确认';
+                return;
+            }
+
+            const dynamicPath = pathData.data; // 动态URL的hash部分
+            this.hide();
+
+            // 2. 执行秒杀
+            await SeckillDebounce.execute(this._goodsId, dynamicPath);
+
+        } catch (e) {
+            errorEl.textContent = '网络异常，请稍后重试';
+            errorEl.classList.add('show');
+            console.error('验证码提交异常:', e);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '确认';
+        }
+    },
+
+    /**
+     * 初始化
+     */
+    init() {
+        // 确保 modal 元素存在
+        const modal = document.getElementById('captchaModal');
+        if (!modal) return;
+
+        // 支持 Enter 键提交
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && modal.classList.contains('show')) {
+                SeckillCaptcha.submit();
+            }
+        });
+
+        // 点击遮罩关闭
+        modal.addEventListener('click', function (e) {
+            if (e.target === this) {
+                SeckillCaptcha.hide();
+            }
+        });
+    }
+};
+
+// ========================================
+// 11. 全局请求拦截（自动注入 JWT token）
+// ========================================
+(function () {
+    const originalFetch = window.fetch;
+
+    window.fetch = function (url, options) {
+        options = options || {};
+
+        // 只对同域 API 请求注入 token
+        if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(window.location.origin))) {
+            const token = localStorage.getItem('seckill_token');
+            if (token) {
+                options.headers = options.headers || {};
+                if (options.headers instanceof Headers) {
+                    if (!options.headers.has('Authorization')) {
+                        options.headers.set('Authorization', 'Bearer ' + token);
+                    }
+                } else {
+                    // 普通对象
+                    if (!options.headers['Authorization']) {
+                        options.headers['Authorization'] = 'Bearer ' + token;
+                    }
+                }
+            }
+        }
+
+        return originalFetch.call(this, url, options);
+    };
+})();
+
+// ========================================
+// 11. 头部用户信息渲染
+// ========================================
+const SeckillHeader = {
+    /**
+     * 渲染头部用户信息
+     */
+    render() {
+        const container = document.getElementById('headerUserInfo');
+        if (!container) return;
+
+        const userId = localStorage.getItem('seckill_userId');
+        const username = localStorage.getItem('seckill_username');
+
+        if (userId) {
+            // 已登录
+            container.innerHTML = `
+                <span style="font-size: 14px;">欢迎您，<span class="username">${username || '用户'}</span></span>
+                <a href="javascript:void(0)" class="logout-btn" onclick="SeckillLogin.logout()" style="margin-left: 8px;">退出登录</a>
+                <a href="/" class="logout-btn">← 返回列表</a>
+            `;
+        } else {
+            // 未登录
+            container.innerHTML = `
+                <a href="javascript:void(0)" class="logout-btn" onclick="SeckillLogin.show()">登录</a>
+                <a href="/" class="logout-btn">← 返回列表</a>
+            `;
+        }
+    }
+};
+
+// ========================================
+// 12. 页面初始化
+// ========================================
+document.addEventListener('DOMContentLoaded', function () {
+    // 初始化登录弹窗
+    SeckillLogin.init();
+
+    // 初始化注册弹窗
+    SeckillRegister.init();
+
+    // 初始化验证码弹窗
+    SeckillCaptcha.init();
+
     // 初始化图片懒加载
     SeckillLazyLoad.init();
 
+    // 渲染头部用户信息
+    SeckillHeader.render();
+
     // 为商品卡片添加点击跳转
     document.querySelectorAll('.goods-card').forEach(card => {
-        card.addEventListener('click', function(e) {
+        card.addEventListener('click', function (e) {
             // 如果点击的是按钮，不跳转
             if (e.target.closest('.seckill-btn')) return;
             const goodsId = this.dataset.goodsId;
