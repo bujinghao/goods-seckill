@@ -39,6 +39,11 @@ public interface SeckillOrderMapper {
     int countByUserAndGoods(@Param("userId") Long userId, @Param("goodsId") Long goodsId);
     
     /**
+     * 根据用户ID和商品ID查询订单
+     */
+    SeckillOrder selectByUserAndGoods(@Param("userId") Long userId, @Param("goodsId") Long goodsId);
+    
+    /**
      * 更新订单状态
      */
     int updateStatus(@Param("id") Long id, @Param("status") Integer status);

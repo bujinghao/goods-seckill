@@ -59,6 +59,14 @@
           AND status IN (0, 1)
     </select>
 
+    <select id="selectByUserAndGoods" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM seckill_order
+        WHERE user_id = #{userId}
+          AND goods_id = #{goodsId}
+          AND status IN (0, 1)
+    </select>
+
     <update id="updateStatus">
         UPDATE seckill_order
         SET status = #{status}

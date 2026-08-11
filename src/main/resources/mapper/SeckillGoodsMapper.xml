@@ -46,6 +46,15 @@
           AND stock_count &gt; 0
         ORDER BY start_time DESC
     </select>
+    <!-- 查询商品id、库存数量、限购数量 -->
+    <select id="selectStockAndLimitCount" resultMap="BaseResultMap">
+        SELECT id, stock_count, stock_count_per_user, goods_name FROM seckill_goods 
+        WHERE status = 1 
+          AND start_time &lt;= NOW() 
+          AND end_time &gt;= NOW()
+          AND stock_count &gt; 0
+        ORDER BY start_time DESC
+    </select>
 
     <!-- 扣减库存：使用 stock_count > 0 条件防止超卖 ；使用锁类型是行锁 ，乐观锁 -->
     <update id="decreaseStock">

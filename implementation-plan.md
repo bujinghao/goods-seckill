@@ -60,7 +60,7 @@
 
 **验证标准**：
 
-- 1000并发下无超卖
+- 1000并发下无超卖		  ————测试通过，主机配置高的可以测更多并发，或者集群测试
 - 商品详情查询响应时间 < 50ms  ————测试通过
 
 ***
@@ -126,21 +126,119 @@
    - 登录接口返回token
    - 自定义拦截器验证token
    - token刷新机制
+   - **JWT工具类设计**（`JwtUtil`）：
+     - 密钥管理（使用256位密钥，建议存储在配置文件或Vault）
+     - 签名算法（HS256或RS256，推荐RS256）
+     - token生成方法（包含userId、username、role等claims）
+     - token解析和验证方法（验证签名、过期时间）
+   - **token存储策略**：
+     - Redis存储token（支持单点登录，踢出旧token）
+     - key格式：`seckill:token:{userId}`
+     - 设置token过期时间（建议30分钟）
+     - token刷新策略（快过期时自动续期）
+   - **白名单配置**：
+     - 登录接口 `/user/login`、`/user/register`
+     - 静态资源 `/static/**`、`/public/**`
+     - 健康检查 `/actuator/**`
+     - 商品列表页 `/goods/list`（不包含秒杀详情）
+   - **登录失败处理**：
+     - 密码错误次数限制（5次后锁定账户15分钟）
+     - 账户锁定状态记录（Redis存储锁定状态）
+     - 登录失败日志记录（记录IP、时间、失败原因）
+
 2. 秒杀接口安全：
    - 接口隐藏（秒杀开始前不暴露URL）
    - 防刷机制（同一用户限制访问频率）
+   - **动态URL生成机制**：
+     - 秒杀开始前，后端生成动态URL（包含随机hash）
+     - hash规则：`MD5(userId + goodsId + timestamp + salt)`
+     - 客户端在秒杀开始时才获取真实URL
+     - URL有效期：30秒，防止提前获取
+   - **验证码机制**：
+     - 秒杀前要求用户输入图形验证码（防止机器人）
+     - 验证码生成：使用Google Kaptcha或类似库
+     - 验证码有效期：60秒
+     - 验证码验证通过后才返回动态URL
+   - **IP黑名单机制**：
+     - 记录恶意IP（短时间内大量请求失败）
+     - 黑名单存储在Redis（key: `seckill:blacklist:ip`）
+     - 黑名单有效期：1小时（自动解除）
+     - 黑名单中的IP直接拒绝访问
+   - **请求签名验证**：
+     - 关键接口（下单）添加签名验证
+     - 签名规则：`HMAC-SHA256(userId + goodsId + timestamp, secretKey)`
+     - 防止参数篡改和重放攻击
+   <!-- - **防重复提交**：
+     - Redis记录用户秒杀状态（key: `seckill:user:status:{userId}:{goodsId}`）
+     - 同一用户对同一商品只能秒杀一次
+     - 订单创建成功后删除状态记录 -->
+
 3. AOP操作日志：
    - 自定义注解 `@OperationLog`
    - 记录：用户、操作、时间、IP、参数、结果
-   - 异步写入数据库（`@Async`）
+   - **（可选1）生成日志文件，保留最近一星期**
+     - Logback配置（`logback-spring.xml`）
+     - 日志文件滚动策略：按日期滚动，每天一个文件
+     - 文件命名：`operation-log-{yyyy-MM-dd}.log`
+     - 文件保留策略：保留最近7天，自动删除旧文件
+     - 日志格式：JSON格式（包含userId、operation、ip、params、result、timestamp）
+     - 日志级别配置：INFO级别记录关键操作，DEBUG级别记录详细参数
+   - **（可选2）异步写入数据库（`@Async`）**
+     - **操作日志表设计**（`operation_log`）：
+       ```sql
+       CREATE TABLE operation_log (
+         id BIGINT PRIMARY KEY AUTO_INCREMENT,
+         user_id BIGINT NOT NULL COMMENT '操作用户ID',
+         username VARCHAR(50) COMMENT '用户名',
+         operation VARCHAR(100) NOT NULL COMMENT '操作类型（LOGIN/SECKILL_ORDER/UPDATE_GOODS等）',
+         method VARCHAR(200) COMMENT '方法名',
+         params TEXT COMMENT '请求参数（JSON格式）',
+         result TEXT COMMENT '操作结果（JSON格式）',
+         ip VARCHAR(50) COMMENT '操作IP',
+         location VARCHAR(100) COMMENT 'IP归属地（可选）',
+         time_taken INT COMMENT '执行时长（毫秒）',
+         status TINYINT COMMENT '操作状态（1成功 0失败）',
+         error_msg TEXT COMMENT '错误信息',
+         create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+         INDEX idx_user_id (user_id),
+         INDEX idx_create_time (create_time)
+       );
+       ```
+     - **异步线程池配置**：
+       - 实现`AsyncConfigurer`接口配置线程池
+       - 核心线程数：5，最大线程数：20，队列容量：100
+       - 线程名称前缀：`operation-log-async-`
+       - 拒绝策略：CallerRunsPolicy（由调用线程执行）
+     - **异步日志服务**（`OperationLogService`）：
+       - 使用`@Async`注解标记保存方法
+       - 捕获异常但不影响主流程（记录到错误日志）
+       - 批量插入优化（可选，使用`saveBatch`）
+     - **日志敏感信息脱敏**：
+       - 参数脱敏：密码、手机号、身份证等（使用正则替换）
+       - 结果脱敏：token、密码等敏感字段
+       - 使用工具类`LogMaskUtil`统一处理
+   - **日志查询接口**（管理后台）：
+     - 按用户ID查询：`GET /admin/logs?userId={userId}`
+     - 按操作类型查询：`GET /admin/logs?operation={operation}`
+     - 按时间范围查询：`GET /admin/logs?startTime={startTime}&endTime={endTime}`
+     - 分页查询：支持page和size参数
+   - ~~（可选3）近期日志监控使用prometheus和grafana实现日志分析~~
+   - ~~（可选4）后期考虑接入elk系统，实现日志聚合和分析~~
 
-**知识点**：JWT、拦截器、AOP、异步编程、安全机制
+**知识点**：JWT、拦截器、AOP、异步编程、安全机制、日志管理
 
 **验证标准**：
 
 - 未登录用户无法访问秒杀接口
 - 所有关键操作都有日志记录
-- 日志写入不影响主流程性能
+- 日志写入不影响主流程性能（异步写入耗时 < 5ms）
+- 日志文件能正确滚动并自动清理
+- 数据库日志能正确记录并支持查询
+- 登录失败次数限制生效，账户锁定机制正常
+- 动态URL验证机制正常，提前获取无效
+- 验证码验证机制正常，防止机器人攻击
+- IP黑名单机制生效，恶意IP被拦截
+- 请求签名验证通过，防止参数篡改
 
 ***
 
@@ -185,7 +283,7 @@
 4. Redis优化：
    - 连接池配置
    - 序列化优化（Protostuff/Kryo）
-5. 监控告警：
+5. 监控告警：（考虑使用 Micrometer集成Prometheus、Grafana展示）
    - 接口响应时间监控
    - 异常率监控
    - 库存变化监控
@@ -206,7 +304,7 @@
 | 阶段  | 核心技术                | 解决的问题      |
 | --- | ------------------- | ---------- |
 | 阶段一 | Spring Boot + MySQL | 基础功能实现     |
-| 阶段二 | Redis               | 数据库压力、超卖问题 |
+| 阶段二 | Redis               | 降低数据库压力、超卖问题 |
 | 阶段三 | 令牌桶限流               | 系统保护、流量控制  |
 | 阶段四 | RabbitMQ            | 高并发削峰、异步处理 |
 | 阶段五 | JWT + AOP           | 安全认证、操作审计  |

@@ -58,9 +58,30 @@ CREATE TABLE IF NOT EXISTS `seckill_order` (
     KEY `idx_user_id` (`user_id`),
     KEY `idx_goods_id` (`goods_id`),
     KEY `idx_create_time` (`create_time`),
-    -- 防止同一用户重复下单同一商品（业务层也需要校验）
-    UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
+    -- -- 防止同一用户重复下单同一商品（业务层也需要校验）； 可能业务需求可以购买多件
+    -- UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='秒杀订单表';
+
+-- 操作日志表
+CREATE TABLE IF NOT EXISTS `operation_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+    `user_id` BIGINT COMMENT '操作用户ID',
+    `username` VARCHAR(50) COMMENT '用户名',
+    `operation` VARCHAR(100) NOT NULL COMMENT '操作类型（LOGIN/SECKILL_ORDER/UPDATE_GOODS等）',
+    `method` VARCHAR(200) COMMENT '方法名',
+    `params` TEXT COMMENT '请求参数（JSON格式）',
+    `result` TEXT COMMENT '操作结果（JSON格式）',
+    `ip` VARCHAR(50) COMMENT '操作IP',
+    `location` VARCHAR(100) COMMENT 'IP归属地（可选）',
+    `time_taken` INT COMMENT '执行时长（毫秒）',
+    `status` TINYINT COMMENT '操作状态（1成功 0失败）',
+    `error_msg` TEXT COMMENT '错误信息',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_create_time` (`create_time`),
+    KEY `idx_operation` (`operation`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='操作日志表';
 
 -- 插入测试数据
 -- 测试用户（密码为123456的BCrypt加密结果）

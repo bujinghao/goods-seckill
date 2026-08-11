@@ -25,6 +25,8 @@ public class StockPreheatRunner implements ApplicationRunner {
 
     /** 库存缓存Key前缀 */
     private static final String STOCK_KEY_PREFIX = "seckill:stock:";
+    // /** 限购缓存Key前缀 */
+    // private static final String LIMIT_KEY_PREFIX = "seckill:limit:";
 
     private final SeckillGoodsMapper goodsMapper;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -39,8 +41,8 @@ public class StockPreheatRunner implements ApplicationRunner {
         log.info("========== 开始预热秒杀库存 ==========");
 
         try {
-            // 查询所有进行中的秒杀商品
-            List<SeckillGoods> goodsList = goodsMapper.selectActiveGoods();
+            // 查询所有进行中的秒杀商品id、库存数量、限购数量
+            List<SeckillGoods> goodsList = goodsMapper.selectStockAndLimitCount();
 
             if (goodsList == null || goodsList.isEmpty()) {
                 log.info("当前没有进行中的秒杀商品，无需预热");
@@ -54,6 +56,10 @@ public class StockPreheatRunner implements ApplicationRunner {
                     String key = STOCK_KEY_PREFIX + goods.getId();
                     Integer stock = goods.getStockCount();
 
+                    // // 预热限购到Redis
+                    // String limitKey = LIMIT_KEY_PREFIX + goods.getId();
+                    // Integer limit = goods.getStockCountPerUser();
+
                     if (stock != null && stock > 0) {
                         redisTemplate.opsForValue().set(key, stock);
                         log.info("预热商品库存成功: goodsId={}, goodsName={}, stock={}",
@@ -62,6 +68,16 @@ public class StockPreheatRunner implements ApplicationRunner {
                     } else {
                         log.warn("商品库存为0或null，跳过预热: goodsId={}", goods.getId());
                     }
+                    
+                    // if (limit != null && limit > 0) {
+                    //     redisTemplate.opsForValue().set(limitKey, limit);
+                    //     log.info("预热商品限购成功: goodsId={}, goodsName={}, limit={}",
+                    //             goods.getId(), goods.getGoodsName(), limit);
+                    //     successCount++;
+                    // } else {
+                    //     log.warn("商品限购为0或null，跳过预热: goodsId={}", goods.getId());
+                    // }
+
                 } catch (Exception e) {
                     log.error("预热商品库存失败: goodsId={}, error={}", goods.getId(), e.getMessage());
                 }

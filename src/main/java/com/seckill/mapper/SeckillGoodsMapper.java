@@ -28,6 +28,11 @@ public interface SeckillGoodsMapper {
     List<SeckillGoods> selectActiveGoods();
     
     /**
+     * 根据ID查询商品id、库存数量
+     */
+    List<SeckillGoods> selectStockAndLimitCount();
+    
+    /**
      * 扣减库存（使用数据库行锁）
      * @param goodsId 商品ID
      * @return 影响行数

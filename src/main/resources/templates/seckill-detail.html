@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="current-user-id" th:content="${currentUserId}">
+    <title th:text="'秒杀 - ' + ${goods.goodsName}">秒杀商品详情</title>
+    <meta name="description" th:content="'限时秒杀：' + ${goods.goodsName} + '，秒杀价仅¥' + ${#numbers.formatDecimal(goods.seckillPrice, 1, 2)}">
+    <link rel="stylesheet" href="/css/seckill.css" th:href="@{/css/seckill.css}">
+    <style>
+        .detail-page .detail-seckill-price { font-size: 36px; font-weight: 700; color: #ff4757; }
+        .detail-page .countdown .time-block .num { display: inline-block; min-width: 36px; padding: 4px 8px; background: #333; color: #fff; border-radius: 4px; font-size: 20px; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <div class="container">
+            <h1><a href="/">⚡ 秒杀商城</a></h1>
+            <div class="user-info">
+                <a href="/" class="logout-btn">← 返回列表</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 商品详情 -->
+    <main class="detail-page container">
+        <div class="goods-detail">
+            <div class="detail-header">
+                <!-- 商品图片 -->
+                <div class="detail-img-wrapper">
+                    <img th:if="${goods.goodsImg != null and !goods.goodsImg.isEmpty()}"
+                         class="detail-img"
+                         th:src="${goods.goodsImg}"
+                         alt="" th:alt="${goods.goodsName}" />
+                    <div th:unless="${goods.goodsImg != null and !goods.goodsImg.isEmpty()}"
+                         class="detail-img-placeholder">
+                        <span th:text="${#strings.substring(goods.goodsName, 0, 1)}">商</span>
+                    </div>
+                </div>
+
+                <!-- 商品信息 -->
+                <div class="detail-info">
+                    <h2 class="detail-name" th:text="${goods.goodsName}">商品名称</h2>
+                    <p class="detail-title" th:text="${goods.goodsTitle}">商品描述</p>
+
+                    <!-- 价格展示 -->
+                    <div class="detail-price-row">
+                        <div>
+                            <span class="detail-seckill-price">
+                                <span class="currency">¥</span><span th:text="${#numbers.formatDecimal(goods.seckillPrice, 1, 2)}">0.00</span>
+                            </span>
+                        </div>
+                        <div>
+                            <span class="detail-original-price">¥<span th:text="${#numbers.formatDecimal(goods.goodsPrice, 1, 2)}">0.00</span></span>
+                        </div>
+                    </div>
+
+                    <!-- 库存信息 -->
+                    <div class="detail-stock">
+                        已售 <span class="stock-num" th:text="${goods.stockCount}">0</span> 件
+                        <span th:if="${goods.stockCountPerUser > 0}">
+                            ｜每人限购 <span class="stock-num" th:text="${goods.stockCountPerUser}">1</span> 件
+                        </span>
+                    </div>
+
+                    <!-- 倒计时 -->
+                    <div class="detail-time">
+                        <div class="countdown" id="countdown">
+                            <span class="label">加载中...</span>
+                        </div>
+                    </div>
+
+                    <!-- 秒杀按钮 -->
+                    <button class="seckill-btn" id="seckillBtn"
+                            th:data-goods-id="${goods.id}"
+                            th:disabled="${goods.status == 2}"
+                            th:classappend="${goods.status == 0 ? 'not-started' : (goods.status == 2 ? 'ended' : '')}"
+                            th:onclick="'SeckillDebounce.execute(' + ${goods.id} + ')'">
+                        <span th:text="${goods.status == 0 ? '即将开始' : (goods.status == 2 ? '已结束' : '立即秒杀')}">立即秒杀</span>
+                    </button>
+
+                    <!-- 轮询状态指示器 -->
+                    <div class="polling-indicator" id="pollingIndicator">
+                        <span class="dot"></span>
+                        <span>正在查询订单结果...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 商品描述 -->
+        <div th:if="${goods.goodsDesc != null and !goods.goodsDesc.isEmpty()}"
+             style="background: #fff; border-radius: 12px; padding: 24px; margin-top: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);">
+            <h3 style="font-size: 16px; margin-bottom: 12px; color: #333;">商品详情</h3>
+            <p style="font-size: 14px; color: #666; line-height: 1.8;" th:text="${goods.goodsDesc}">商品描述</p>
+        </div>
+    </main>
+
+    <!-- 排队提示弹窗 -->
+    <div class="queue-modal" id="queueModal">
+        <div class="modal-content">
+            <h3>正在排队中...</h3>
+            <div class="spinner"></div>
+            <p class="queue-info">系统正在处理您的请求，请稍候</p>
+            <p class="queue-info" style="font-size: 12px; color: #999;">请不要刷新页面或重复点击</p>
+        </div>
+    </div>
+
+    <script src="/js/seckill.js" th:src="@{/js/seckill.js}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 启动倒计时
+            SeckillCountdown.start(
+                'countdown',
+                '[[${#temporals.format(goods.startTime, 'yyyy-MM-dd\'T\'HH:mm:ss')}]]',
+                '[[${#temporals.format(goods.endTime, 'yyyy-MM-dd\'T\'HH:mm:ss')}]]'
+            );
+
+            // 格式化详情页时间显示
+            var startStr = '[[${#temporals.format(goods.startTime, 'yyyy-MM-dd HH:mm:ss')}]]';
+            var endStr = '[[${#temporals.format(goods.endTime, 'yyyy-MM-dd HH:mm:ss')}]]';
+            if (startStr && endStr) {
+                var timeInfo = document.querySelector('.detail-time');
+                if (timeInfo) {
+                    var infoEl = document.createElement('div');
+                    infoEl.style.cssText = 'font-size: 13px; color: #999; margin-top: 8px;';
+                    infoEl.textContent = '活动时间：' + startStr + ' 至 ' + endStr;
+                    timeInfo.appendChild(infoEl);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

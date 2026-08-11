@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="current-user-id" th:content="${currentUserId}">
+    <title>秒杀商城 - 限时抢购</title>
+    <meta name="description" content="精选商品限时秒杀，低至1折起">
+    <link rel="stylesheet" href="/css/seckill.css" th:href="@{/css/seckill.css}">
+    <style>
+        /* 首屏关键CSS内联，加速首屏渲染 */
+        .header { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: #fff; padding: 16px 0; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+        .goods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; padding: 24px 0; }
+        .goods-card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .goods-card .goods-img-wrapper { width: 100%; height: 200px; overflow: hidden; background: #f0f0f0; }
+        .goods-card .goods-img-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 48px; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header class="header">
+        <div class="container">
+            <h1><a href="/">⚡ 秒杀商城</a></h1>
+            <div class="user-info" th:if="${currentUserId != null}">
+                <span>欢迎您，<span class="username" th:text="${#strings.defaultString(session.username, '用户')}">用户</span></span>
+                <a href="/user/logout" class="logout-btn">退出登录</a>
+            </div>
+            <div class="user-info" th:unless="${currentUserId != null}">
+                <a href="/user/login" class="logout-btn">登录</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 商品列表 -->
+    <main class="container">
+        <div class="goods-grid">
+            <!-- 商品卡片循环 -->
+            <div class="goods-card"
+                 th:each="goods : ${goodsList}"
+                 th:data-goods-id="${goods.id}">
+
+                <!-- 商品图片 -->
+                <div class="goods-img-wrapper">
+                    <img th:if="${goods.goodsImg != null and !goods.goodsImg.isEmpty()}"
+                         class="goods-img lazy-img"
+                         data-src="" th:data-src="${goods.goodsImg}"
+                         alt="" th:alt="${goods.goodsName}"
+                         loading="lazy" />
+                    <div th:unless="${goods.goodsImg != null and !goods.goodsImg.isEmpty()}"
+                         class="goods-img-placeholder">
+                        <span th:text="${#strings.substring(goods.goodsName, 0, 1)}">商</span>
+                    </div>
+                </div>
+
+                <!-- 商品信息 -->
+                <div class="goods-info">
+                    <div class="goods-name" th:text="${goods.goodsName}">商品名称</div>
+                    <div class="goods-title" th:text="${goods.goodsTitle}">商品标题</div>
+
+                    <!-- 价格 -->
+                    <div class="price-row">
+                        <span class="seckill-price">
+                            <span class="currency">¥</span><span th:text="${#numbers.formatDecimal(goods.seckillPrice, 1, 2)}">0.00</span>
+                        </span>
+                        <span class="original-price">¥<span th:text="${#numbers.formatDecimal(goods.goodsPrice, 1, 2)}">0.00</span></span>
+                    </div>
+
+                    <!-- 库存 -->
+                    <div class="stock-info" th:if="${goods.status == 1}">
+                        仅剩 <span class="stock-count" th:text="${goods.stockCount}">0</span> 件
+                    </div>
+
+                    <!-- 状态 -->
+                    <span class="status-badge ongoing" th:if="${goods.status == 1}">进行中</span>
+                    <span class="status-badge not-started" th:if="${goods.status == 0}">即将开始</span>
+                    <span class="status-badge ended" th:if="${goods.status == 2}">已结束</span>
+
+                    <!-- 时间信息 -->
+                    <div class="time-info" th:if="${goods.status == 0}">
+                        开始：<span th:text="${#temporals.format(goods.startTime, 'MM-dd HH:mm')}">2024-01-01 00:00</span>
+                    </div>
+                    <div class="time-info" th:if="${goods.status == 1}">
+                        结束：<span th:text="${#temporals.format(goods.endTime, 'MM-dd HH:mm')}">2024-01-01 00:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div th:if="${#lists.isEmpty(goodsList)}" style="grid-column: 1 / -1; text-align: center; padding: 60px 0; color: #999;">
+                <p style="font-size: 48px; margin-bottom: 16px;">📦</p>
+                <p>暂无秒杀商品</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 引入JS -->
+    <script src="/js/seckill.js" th:src="@{/js/seckill.js}"></script>
+</body>
+</html>

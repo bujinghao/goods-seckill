@@ -1,14 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- 日志文件存储路径 -->
+    <property name="LOG_PATH" value="logs"/>
+    <!-- 日志文件名前缀 -->
+    <property name="LOG_PREFIX" value="seckill"/>
+    <!-- 操作日志文件名前缀 -->
+    <property name="OPERATION_LOG_PREFIX" value="operation-log"/>
+
+    <!-- 日志输出格式 -->
     <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
-    
+    <!-- 操作日志JSON格式 -->
+    <property name="OPERATION_LOG_PATTERN" value="%msg%n"/>
+
     <!-- 控制台输出 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
-            <charset>UTF-8</charset>
+            <!-- Windows系统控制台默认编码为GBK，设置为GBK避免中文乱码 -->
+            <charset>GBK</charset>
         </encoder>
     </appender>
+
+    <!-- 操作日志文件输出（JSON格式） -->
+    <appender name="OPERATION_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 日志文件路径 -->
+        <file>${LOG_PATH}/${OPERATION_LOG_PREFIX}.log</file>
+        <!-- 日志输出格式 -->
+        <encoder>
+            <pattern>${OPERATION_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <!-- 滚动策略：按日期滚动 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 滚动文件名格式 -->
+            <fileNamePattern>${LOG_PATH}/${OPERATION_LOG_PREFIX}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 最大保留7天的日志文件 -->
+            <maxHistory>7</maxHistory>
+            <!-- 总日志文件大小限制（可选） -->
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 操作日志Logger（只记录操作日志，不向上传递） -->
+    <logger name="com.seckill.aspect.OperationLogAspect" level="INFO" additivity="false">
+        <appender-ref ref="OPERATION_LOG_FILE"/>
+    </logger>
 
     <!-- 根日志级别 -->
     <root level="INFO">

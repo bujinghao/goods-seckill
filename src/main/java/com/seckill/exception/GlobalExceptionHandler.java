@@ -35,7 +35,14 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
-        log.error("系统异常", e);
+        // 特殊处理：客户端断开连接异常（响应阶段失败，业务已成功）
+        if (e instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException) {
+            log.warn("客户端已断开连接，响应失败（业务可能已成功）: {}", e.getMessage());
+            // 注意：此时无法返回响应，客户端已断开
+            return Result.error("响应失败");
+        }
+
+        log.error("系统异常: {}", e.getMessage(), e);
         return Result.error("系统繁忙，请稍后重试");
     }
 }

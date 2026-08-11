@@ -5,6 +5,22 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  # Tomcat线程池配置（支持高并发）
+  # 【Tomcat理论最大值】
+  # - 最大线程数(max): 理论无上限，受限于操作系统进程数和内存
+  #   * 32位JVM: 建议不超过2000（每个线程约1MB栈空间）
+  #   * 64位JVM: 可支持更多，但建议不超过10000（避免上下文切换开销过大）
+  # - 最大连接数(max-connections):
+  #   * Linux: 默认8192，可提升至65535（受限于系统ulimit -n）
+  #   * Windows: 理论无上限，受限于系统资源
+  # - 推荐配置原则: max-threads ≈ CPU核心数 * 200 (IO密集型应用)
+  tomcat:
+    threads:
+      max: 1000  # 最大工作线程数，建议: CPU核心数 * 200，上限约10000
+      min-spare: 50  # 最小空闲线程数，建议: max的5%-10%
+    max-connections: 2000  # 最大并发连接数，Linux默认8192，上限65535（需调整ulimit）
+    accept-count: 1000  # 等待队列长度，建议: 与max-threads相同
+    connection-timeout: 5000  # 连接超时时间（毫秒），建议: 5000-30000
 
 spring:
   application:
@@ -18,12 +34,57 @@ spring:
       # password: # 如果有密码，取消注释并填写
       database: 0
       timeout: 3000ms
+      # Lettuce连接池配置（高并发优化）
+      # 【Redis连接池理论最大值】
+      # - max-active: 理论无上限，但受限于Redis服务端的maxclients配置（默认10000）
+      #   * Redis 6.0+: 支持IO多线程，可提升至20000+
+      #   * Redis 5.0及以下: 单线程模型，建议不超过5000（避免单线程瓶颈）
+      # - 推荐配置原则: max-active ≈ 应用并发数 * 1.5（预留缓冲）
+      # - 注意: 需在redis.conf中设置 maxclients > max-active
       lettuce:
         pool:
-          max-active: 50
-          max-idle: 10
-          min-idle: 5
-          max-wait: 3000ms
+          max-active: 200  # 最大活跃连接数，建议: 并发数 * 1.5，上限约5000（单机Redis）
+          max-idle: 50  # 最大空闲连接数，建议: max-active的20%-30%
+          min-idle: 10  # 最小空闲连接数，建议: 预热连接，避免冷启动
+          max-wait: 5000ms  # 获取连接最大等待时间，建议: 3000-10000ms
+
+  # RabbitMQ 配置（流量削峰）
+  # 【RabbitMQ连接池理论最大值】
+  # - concurrentConsumers: 最小并发消费者数，建议: 数据库连接池的10%-20%
+  # - maxConcurrentConsumers: 最大并发消费者数，建议: 数据库连接池的50%-100%
+  # - 推荐配置原则: 并发消费者数 ≈ 数据库连接池大小（确保每个消费者都能获得连接）
+  # - 注意事项:
+  #   * 需确保RabbitMQ服务端有足够的连接数（默认不限制）
+  #   * 需确保数据库连接池足够大（建议 >= maxConcurrentConsumers）
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin
+    virtual-host: /
+    # 连接超时时间
+    connection-timeout: 10000
+    # 消息确认机制
+    publisher-confirm-type: correlated  # 发布确认（确保消息不丢失）
+    publisher-returns: true  # 发布返回
+    template:
+      mandatory: true  # 消息路由失败时返回给生产者
+    # 消费者配置
+    listener:
+      simple:
+        # 手动确认模式（确保消息不丢失）
+        acknowledge-mode: manual
+        # 并发消费者数量（对应数据库连接池大小）
+        concurrency: 50  # 初始并发消费者数
+        max-concurrency: 300  # 最大并发消费者数（对应数据库连接池300）
+        # 预取数量：每个消费者一次最多获取的消息数
+        prefetch: 1  # 设置为1，确保公平分发
+        # 重试机制
+        retry:
+          enabled: true  # 启用重试
+          initial-interval: 1000  # 初始重试间隔（毫秒）
+          max-attempts: 3  # 最大重试次数
+          multiplier: 2.0  # 重试间隔倍数，比如初始间隔1秒，第1次重试间隔3秒，第2次重试间隔6秒
 
   # 数据源配置（HikariCP）
   datasource:
@@ -31,15 +92,47 @@ spring:
     url: jdbc:mysql://localhost:3306/seckill?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: my-secret-pw
-    # HikariCP 连接池配置
+    # HikariCP 连接池配置（高并发优化）
+    # 【MySQL连接池理论最大值】
+    # - maximum-pool-size: 理论无上限，但受限于MySQL服务端的max_connections配置（默认151）
+    #   * MySQL 5.7+: 最大支持100000，但建议不超过2000（避免连接握手开销）
+    #   * MySQL 8.0+: 最大支持100000，同样建议不超过2000
+    #   * 计算公式: 连接池大小 = (核心数 * 2) + 有效磁盘数（HikariCP推荐）
+    #   * 实践经验: 秒杀场景建议 = 并发数 / 5（因为大部分请求被Redis拦截）
+    # - 推荐配置原则:
+    #   * maximum-pool-size ≈ min(MySQL max_connections * 0.8, 应用并发数 / 5)
+    # - 注意事项:
+    #   * 需在MySQL中执行: SET GLOBAL max_connections = 500;
+    #   * 需在my.cnf中配置: max_connections = 500（永久生效）
+    #   * 多应用实例时，总连接数不应超过MySQL的max_connections
     hikari:
-      minimum-idle: 10 # 最小空闲连接数
-      maximum-pool-size: 50 # 最大连接数
-      idle-timeout: 300000 # 空闲连接超时时间
-      max-lifetime: 1800000 # 连接最大生命周期
-      connection-timeout: 30000 # 连接超时时间
-      pool-name: SeckillHikariCP # 连接池名称
-      connection-test-query: SELECT 1 # 连接测试查询
+      minimum-idle: 20  # 最小空闲连接数，建议: maximum-pool-size的10%
+      maximum-pool-size: 300  # 最大连接数，建议: 并发数/5，上限约2000
+      idle-timeout: 300000  # 空闲连接超时时间（5分钟），建议: 300000-600000ms
+      max-lifetime: 1800000  # 连接最大生命周期（30分钟），建议: 1800000-3600000ms
+      connection-timeout: 10000  # 连接超时时间（10秒），建议: 10000-30000ms
+      pool-name: SeckillHikariCP  # 连接池名称，便于监控识别
+      connection-test-query: SELECT 1  # 连接测试查询，建议: SELECT 1（最轻量）
+
+  # Thymeleaf 模板引擎配置
+  thymeleaf:
+    cache: true  # 生产环境开启模板缓存，提升渲染性能
+    prefix: classpath:/templates/  # 模板文件存放路径
+    suffix: .html  # 模板文件后缀
+    mode: HTML  # 模板模式
+    encoding: UTF-8  # 编码
+    servlet:
+      content-type: text/html  # 响应内容类型
+
+  # 静态资源缓存配置
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 604800  # 静态资源缓存有效期（秒）：7天
+          no-cache: false  # 允许缓存
+          no-store: false  # 允许存储
+      static-locations: classpath:/static/  # 静态资源存放路径
 
 # MyBatis 配置
 mybatis:
@@ -51,9 +144,69 @@ mybatis:
     # # 日志配置, 打印 SQL 语句
     # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+# JWT配置
+jwt:
+  secret: your-256-bit-secret-key-for-jwt-signing-please-change-this-in-production
+  expiration: 1800000  # token有效期（毫秒）: 30分钟
+  header: Authorization  # HTTP Header名称
+  prefix: "Bearer "  # token前缀
+  refresh-threshold: 300000  # 刷新阈值（毫秒）: 5分钟（快过期时自动续期）
+
+# 验证码配置
+captcha:
+  expiration: 60000  # 验证码有效期（毫秒）: 60秒
+
 # 日志配置
 logging:
   level:
     # 映射器日志级别为 debug
-    com.seckill.mapper: debug # 打印 Mapper 接口的 SQL 日志
+    com.seckill.mapper: debug # 打印 Mapper 接口的 SQL 日记
     org.springframework.jdbc: debug # 打印 Spring JDBC 的详细日志
+
+
+# ============================================================================
+# 【操作系统层面限制 - 高并发必读】
+# ============================================================================
+#
+# 1. 文件描述符限制（Linux/Unix）
+#    - Tomcat每个连接占用1个文件描述符
+#    - 查看当前限制: ulimit -n（默认1024）
+#    - 临时修改: ulimit -n 65535
+#    - 永久修改: 在 /etc/security/limits.conf 添加:
+#      * soft nofile 65535
+#      * hard nofile 65535
+#
+# 2. 进程/线程数限制（Linux/Unix）
+#    - 查看当前限制: ulimit -u
+#    - 查看系统最大线程数: cat /proc/sys/kernel/pid_max（默认32768）
+#    - 修改: echo 100000 > /proc/sys/kernel/pid_max
+#
+# 3. TCP连接队列限制（Linux/Unix）
+#    - 查看当前限制: cat /proc/sys/net/core/somaxconn（默认128）
+#    - 修改: echo 1024 > /proc/sys/net/core/somaxconn
+#    - 查看TCP backlog: cat /proc/sys/net/ipv4/tcp_max_syn_backlog
+#    - 修改: echo 2048 > /proc/sys/net/ipv4/tcp_max_syn_backlog
+#
+# 4. JVM内存配置（启动参数）
+#    - 最小堆内存: -Xms2g（建议: 系统内存的50%-75%）
+#    - 最大堆内存: -Xmx2g（建议: 与Xms相同，避免动态扩容）
+#    - 线程栈大小: -Xss1m（默认1MB，高并发可减小到512k）
+#    - 元空间大小: -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m
+#    - 示例: java -Xms4g -Xmx4g -Xss512k -jar app.jar
+#
+# 5. Windows系统限制
+#    - 最大并发TCP连接数: 理论无上限，实际受限于内存和CPU
+#    - 查看当前连接数: netstat -an | find "ESTABLISHED" /c
+#    - 修改TCP参数: 注册表 HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
+#      * MaxUserPort: 65534（默认5000）
+#      * TcpTimedWaitDelay: 30（默认240秒，缩短TIME_WAIT时间）
+#
+# 6. 性能监控命令（压测时使用）
+#    - 监控CPU: top -H -p <pid>
+#    - 监控线程: jstack <pid> | grep "java.lang.Thread.State" | wc -l
+#    - 监控网络: netstat -an | grep "ESTABLISHED" | wc -l
+#    - 监控文件描述符: lsof -p <pid> | wc -l（Linux）
+#    - 监控JVM内存: jstat -gc <pid> 1000 10
+#
+# ============================================================================
+
