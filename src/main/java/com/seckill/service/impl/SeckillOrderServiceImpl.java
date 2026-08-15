@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class SeckillOrderServiceImpl implements SeckillOrderService {
 
+    /**
+     * 秒杀订单Mapper，用于数据库操作
+     * final 表示在初始构造函数中注入后，不会被修改，确保线程安全。‌
+     */
     private final SeckillOrderMapper orderMapper;
 
     /**

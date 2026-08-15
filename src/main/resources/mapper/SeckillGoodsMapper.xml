@@ -2,84 +2,97 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.seckill.mapper.SeckillGoodsMapper">
 
+    <!-- 
+    特性 一级缓存 二级缓存 
+    Key组成 完全相同 完全相同 
+    作用域 SqlSession 独享 Mapper 命名空间共享 
+    生命周期 随 SqlSession 关闭而清除 应用启动期间持续 
+    命中条件 同一个 SqlSession + 相同 Key 跨 SqlSession + 相同 Key 
+
+    ## 一级缓存失效场景
+    即使 Key 相同，以下情况也会导致一级缓存失效：
+
+    1. SqlSession 关闭 ： session.close()
+    2. 手动清空 ： session.clearCache()
+    3. 执行更新操作 ： insert/update/delete
+    4. 提交事务 ： session.commit()
+    5. 回滚事务 ： session.rollback()
+    -->
+
+    <!-- 缓存配置，在mybatis-config.xml中配置全局开启二级缓存 -->
+    <!-- <settings>
+        <setting name="cacheEnabled" value="true"/>
+    </settings> -->
+
+    <!-- 开启当前命名空间的二级缓存 -->
+    <cache eviction="LRU" flushInterval="60000" size="100" readOnly="true" />
+    <!-- 详细说明 -->
+    <!-- eviction: 缓存淘汰策略。LRU(默认)-最近最少使用；FIFO-先进先出；LFU-最少使用；SOFT-软引用；WEAK-弱引用 -->
+    <!-- flushInterval: 缓存刷新时间间隔，单位毫秒；到达时间后缓存清空，下次查询重新从数据库加载 -->
+    <!-- size: 缓存大小，单位个数；表示该Mapper命名空间缓存中最多存储的对象引用数，所有SqlSession跨线程共享此缓存 -->
+    <!-- readOnly: 是否只读缓存。true-只读，返回相同对象引用(性能好但可能污染)；false-读写，返回序列化副本(安全但性能稍差) -->
+    <!-- 缓存的存储单位Key Cache Key = Mapper命名空间 + SQL语句ID + 查询参数 + 分页参数 + 环境ID -->
+
     <resultMap id="BaseResultMap" type="com.seckill.entity.SeckillGoods">
-        <id column="id" property="id"/>
-        <result column="goods_name" property="goodsName"/>
-        <result column="goods_title" property="goodsTitle"/>
-        <result column="goods_img" property="goodsImg"/>
-        <result column="goods_price" property="goodsPrice"/>
-        <result column="seckill_price" property="seckillPrice"/>
-        <result column="stock_count" property="stockCount"/>
-        <result column="stock_count_per_user" property="stockCountPerUser"/>
-        <result column="start_time" property="startTime"/>
-        <result column="end_time" property="endTime"/>
-        <result column="status" property="status"/>
-        <result column="goods_desc" property="goodsDesc"/>
-        <result column="create_time" property="createTime"/>
-        <result column="update_time" property="updateTime"/>
+        <id column="id" property="id" />
+        <result column="goods_name" property="goodsName" />
+        <result column="goods_title" property="goodsTitle" />
+        <result column="goods_img" property="goodsImg" />
+        <result column="goods_price" property="goodsPrice" />
+        <result column="seckill_price" property="seckillPrice" />
+        <result column="stock_count" property="stockCount" />
+        <result column="stock_count_per_user" property="stockCountPerUser" />
+        <result column="start_time" property="startTime" />
+        <result column="end_time" property="endTime" />
+        <result column="status" property="status" />
+        <result column="goods_desc" property="goodsDesc" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
     </resultMap>
 
-    <sql id="Base_Column_List">
-        id, goods_name, goods_title, goods_img, goods_price, seckill_price, 
-        stock_count, stock_count_per_user, start_time, end_time, status, 
-        goods_desc, create_time, update_time
-    </sql>
+    <sql id="Base_Column_List"> id, goods_name, goods_title, goods_img, goods_price, seckill_price,
+        stock_count, stock_count_per_user, start_time, end_time, status, goods_desc, create_time,
+        update_time </sql>
 
-    <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM seckill_goods
-        WHERE id = #{id}
-    </select>
+    <select id="selectById" resultMap="BaseResultMap"> SELECT <include refid="Base_Column_List" />
+        FROM seckill_goods WHERE id = #{id} </select>
 
-    <select id="selectAll" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM seckill_goods
-        ORDER BY create_time DESC
-    </select>
+    <select id="selectAll" resultMap="BaseResultMap"> SELECT <include refid="Base_Column_List" />
+        FROM seckill_goods ORDER BY create_time DESC </select>
 
-    <select id="selectActiveGoods" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM seckill_goods
-        WHERE status = 1 
-          AND start_time &lt;= NOW() 
-          AND end_time &gt;= NOW()
-          AND stock_count &gt; 0
-        ORDER BY start_time DESC
-    </select>
+    <select id="selectActiveGoods" resultMap="BaseResultMap"> SELECT <include
+            refid="Base_Column_List" /> FROM seckill_goods WHERE status = 1 AND start_time &lt;=
+        NOW() AND end_time &gt;= NOW() AND stock_count &gt; 0 ORDER BY start_time DESC </select>
     <!-- 查询商品id、库存数量、限购数量 -->
-    <select id="selectStockAndLimitCount" resultMap="BaseResultMap">
-        SELECT id, stock_count, stock_count_per_user, goods_name FROM seckill_goods 
-        WHERE status = 1 
-          AND start_time &lt;= NOW() 
-          AND end_time &gt;= NOW()
-          AND stock_count &gt; 0
-        ORDER BY start_time DESC
-    </select>
+    <select id="selectStockAndLimitCount" resultMap="BaseResultMap"> SELECT id, stock_count,
+        stock_count_per_user, goods_name FROM seckill_goods WHERE status = 1 AND start_time &lt;=
+        NOW() AND end_time &gt;= NOW() AND stock_count &gt; 0 ORDER BY start_time DESC </select>
 
     <!-- 扣减库存：使用 stock_count > 0 条件防止超卖 ；使用锁类型是行锁 ，乐观锁 -->
-    <update id="decreaseStock">
-        UPDATE seckill_goods
-        SET stock_count = stock_count - 1
-        WHERE id = #{goodsId}
-          AND stock_count &gt; 0
-    </update>
+    <update id="decreaseStock"> UPDATE seckill_goods SET stock_count = stock_count - 1 WHERE id =
+        #{goodsId} AND stock_count &gt; 0 </update>
 
-    <update id="updateById">
-        UPDATE seckill_goods
-        <set>
+    <update id="updateById"> UPDATE seckill_goods <set>
             <if test="goodsName != null">goods_name = #{goodsName},</if>
-            <if test="goodsTitle != null">goods_title = #{goodsTitle},</if>
-            <if test="goodsImg != null">goods_img = #{goodsImg},</if>
-            <if test="goodsPrice != null">goods_price = #{goodsPrice},</if>
+            <if
+                test="goodsTitle != null">goods_title = #{goodsTitle},</if>
+            <if
+                test="goodsImg != null">goods_img = #{goodsImg},</if>
+            <if test="goodsPrice != null">goods_price
+        = #{goodsPrice},</if>
             <if test="seckillPrice != null">seckill_price = #{seckillPrice},</if>
-            <if test="stockCount != null">stock_count = #{stockCount},</if>
-            <if test="stockCountPerUser != null">stock_count_per_user = #{stockCountPerUser},</if>
-            <if test="startTime != null">start_time = #{startTime},</if>
-            <if test="endTime != null">end_time = #{endTime},</if>
+            <if
+                test="stockCount != null">stock_count = #{stockCount},</if>
+            <if
+                test="stockCountPerUser != null">stock_count_per_user = #{stockCountPerUser},</if>
+            <if
+                test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time
+        = #{endTime},</if>
             <if test="status != null">status = #{status},</if>
-            <if test="goodsDesc != null">goods_desc = #{goodsDesc},</if>
-        </set>
-        WHERE id = #{id}
-    </update>
+            <if
+                test="goodsDesc != null">goods_desc = #{goodsDesc},</if>
+        </set> WHERE id =
+        #{id} </update>
 
 </mapper>

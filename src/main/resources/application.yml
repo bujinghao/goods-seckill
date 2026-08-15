@@ -29,7 +29,7 @@ spring:
   # Redis 配置
   data:
     redis:
-      host: localhost
+      host: wljhost
       port: 6379
       # password: # 如果有密码，取消注释并填写
       database: 0
@@ -57,7 +57,7 @@ spring:
   #   * 需确保RabbitMQ服务端有足够的连接数（默认不限制）
   #   * 需确保数据库连接池足够大（建议 >= maxConcurrentConsumers）
   rabbitmq:
-    host: localhost
+    host: wljhost
     port: 5672
     username: admin
     password: admin
@@ -89,7 +89,7 @@ spring:
   # 数据源配置（HikariCP）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/seckill?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://wljhost:3306/seckill?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: my-secret-pw
     # HikariCP 连接池配置（高并发优化）

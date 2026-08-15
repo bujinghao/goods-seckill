@@ -7,6 +7,8 @@ import com.seckill.mapper.SeckillOrderMapper;
 import com.seckill.mq.SeckillMessageProducer;
 import com.seckill.service.SeckillService;
 
+import jakarta.annotation.Resource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,16 +35,17 @@ public class SeckillServiceImpl implements SeckillService {
     private final String SECKILL_USER_STATUS_KEY = "seckill:user:status:%s:%s";
     // seckill:user:status:{userId}:{goodsId}
 
-    @Autowired
-    private SeckillMessageProducer messageProducer;
-
     public SeckillServiceImpl(SeckillGoodsMapper goodsMapper, SeckillOrderMapper orderMapper) {
         this.goodsMapper = goodsMapper;
         this.orderMapper = orderMapper;
     }
 
+    @Autowired
+    private SeckillMessageProducer messageProducer;
+
     /**
-     * @Autowired 是 Spring 框架注解，先按类型后按名称匹配；@Resource 是 Java 标准注解，先按名称后按类型匹配。
+     * @Autowired 是 Spring 框架注解，先按类型后按名称匹配；
+     * @Resource 是 Java 标准注解，先按名称后按类型匹配。
      * 
      *      来源与匹配策略
      *      来源不同‌：@Autowired 来自 Spring
@@ -60,6 +63,7 @@ public class SeckillServiceImpl implements SeckillService {
      *      不支持该属性，注入失败直接抛异常。‌‌‌
      */
     @Autowired
+    // @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
     @Override

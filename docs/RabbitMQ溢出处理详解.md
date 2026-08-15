@@ -307,14 +307,14 @@ groups:
 rabbitmq-server
 
 # 查看队列状态
-http://localhost:15672/#/queues
+http://wljhost:15672/#/queues
 ```
 
 ### 2. 压测验证
 
 ```bash
 # 使用JMeter发送10000请求
-POST http://localhost:8080/seckill/1/do/async?userId=123
+POST http://wljhost:8080/seckill/1/do/async?userId=123
 
 # 观察队列状态
 - 队列消息数：应逐渐增加，达到10000后保持稳定

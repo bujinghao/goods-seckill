@@ -115,7 +115,7 @@
         <!-- HikariCP (Spring Boot default) -->
         <!-- HikariCP is included in spring-boot-starter-jdbc, which is already pulled in by mybatis starter -->
 
-        <!-- Lombok -->
+        <!-- Lombok optional表示可选依赖，不包含在最终的jar包中，只用于编译（默认）时使用；‌阻断传递‌-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

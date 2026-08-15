@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,14 @@ import java.util.List;
  * <p>
  * 使用ApplicationRunner在Spring Boot应用启动完成后自动执行库存预热，
  * 将进行中的秒杀商品库存加载到Redis，key格式: seckill:stock:{goodsId}
+ * 
+ * ApplicationRunner 与 CommandLineRunner 对比
+ * 
+ * 仅在于 run 方法接收的‌参数类型不同‌，导致参数解析能力有差异。
+ * ‌执行顺序‌：若未指定 @Order，‌ApplicationRunner 默认优先于 CommandLineRunner 执行‌；同类型内按 Order
+ * 值升序排列。‌‌
+ * 
+ * 
  * </p>
  */
 @Component
@@ -68,14 +77,14 @@ public class StockPreheatRunner implements ApplicationRunner {
                     } else {
                         log.warn("商品库存为0或null，跳过预热: goodsId={}", goods.getId());
                     }
-                    
+
                     // if (limit != null && limit > 0) {
-                    //     redisTemplate.opsForValue().set(limitKey, limit);
-                    //     log.info("预热商品限购成功: goodsId={}, goodsName={}, limit={}",
-                    //             goods.getId(), goods.getGoodsName(), limit);
-                    //     successCount++;
+                    // redisTemplate.opsForValue().set(limitKey, limit);
+                    // log.info("预热商品限购成功: goodsId={}, goodsName={}, limit={}",
+                    // goods.getId(), goods.getGoodsName(), limit);
+                    // successCount++;
                     // } else {
-                    //     log.warn("商品限购为0或null，跳过预热: goodsId={}", goods.getId());
+                    // log.warn("商品限购为0或null，跳过预热: goodsId={}", goods.getId());
                     // }
 
                 } catch (Exception e) {

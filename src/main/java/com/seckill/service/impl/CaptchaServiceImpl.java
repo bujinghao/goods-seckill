@@ -3,7 +3,7 @@ package com.seckill.service.impl;
 import com.seckill.service.CaptchaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+// import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -20,8 +20,8 @@ public class CaptchaServiceImpl implements CaptchaService {
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    @Value("${captcha.expiration:60000}")
-    private Long captchaExpiration;
+    // @Value("${captcha.expiration:60000}")
+    // private Long captchaExpiration;
 
     @Override
     public boolean verifyCaptcha(String captchaKey, String captcha) {
